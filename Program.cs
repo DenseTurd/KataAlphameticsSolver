@@ -15,8 +15,8 @@ namespace KataAlphameticsSolver
     {
         static void Main(string[] args)
         {
-            //Console.WriteLine(Alphametics("AD + BA = CE"));
-            Console.WriteLine(Alphametics("MA + MA = ABB")); //"MA + MA = ABB" >> 61 + 61 = 122
+            Console.WriteLine(Alphametics("AD + BA = CE"));
+            //Console.WriteLine(Alphametics("MA + MA = ABB")); //"MA + MA = ABB" >> 61 + 61 = 122
         }
 
         static Dictionary<char, List<int>> charIntDict;
@@ -26,11 +26,21 @@ namespace KataAlphameticsSolver
         static List<int> remainingValues = new List<int>() { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
         static Dictionary<int, int> columnSums;
         static int maxAddendLength;
+        enum RequiresCarry
+        {
+            Yes,
+            No,
+            NotSure
+        }
+        static List<RequiresCarry> columnCarrys;
+        static List<bool> columSolved;
 
         public static string Alphametics(string s)
-        {
-            CreateColumnSumDictionary();
+        { 
             FormatStrings(s);
+            CreateColumnCarrysList();
+            CreateColumnSumDictionary();
+            CreateColumnSolvedList();
             ResetCharIntDictionary();
 
             OptionallyWriteStringsToConsole();
@@ -70,12 +80,105 @@ namespace KataAlphameticsSolver
                 {
                     Console.WriteLine($"There are unknown values in column {i}\n");
                     ConstrainColumn(i);
-                    //TryValues();
+                    if (!columSolved[i])
+                    {
+                        TryValuesForColumn(i);
+                    }
                 }
             }
 
 
             ShowMeWhatYouGot();
+        }
+
+        static void TryValuesForColumn(int column)
+        {
+            int addendSum = 0;
+            for (int i = 0; i < addends.Length; i++)
+            {
+                int addendColumnIndex = (addends[i].Length - result.Length) + column;
+                if (addendColumnIndex >= 0)
+                {
+                    if (tempCharIntDict[addends[i][addendColumnIndex]].Count != 1)
+                    {
+                        GetAndSetMinPossibleVal(tempCharIntDict, addends[i][addendColumnIndex]);
+                        Console.WriteLine($"Setting char {addends[i][addendColumnIndex]} to {tempCharIntDict[addends[i][addendColumnIndex]][0]} for now");
+                    }
+                    addendSum += tempCharIntDict[addends[i][addendColumnIndex]][0];
+                    //Console.WriteLine($"addend sum currently: {addendSum}");
+                }
+            }
+
+            Console.WriteLine($"The addend sum for column {column} is: {addendSum}. Testing against result");
+            TestAgainstResultColumn(addendSum, column);
+        }
+
+        static void TestAgainstResultColumn(int addendSum, int column)
+        {
+            if (tempCharIntDict[result[column]].Count == 1)
+            {
+                Console.WriteLine($"Column {column} of the result already has a value: {tempCharIntDict[result[column]][0]}");
+                if (columnCarrys[column] == RequiresCarry.Yes)
+                {
+                    if (addendSum + 1 == tempCharIntDict[result[column]][0])
+                    {
+                        Console.WriteLine($"The values fit with a carry from the next column");
+                        columSolved[column] = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"The values dont fit with a carry");
+                    }
+                }
+                else if (columnCarrys[column] == RequiresCarry.No)
+                {
+                    if (addendSum == tempCharIntDict[result[column]][0])
+                    {
+                        Console.WriteLine($"The values fit with no carry from the next column");
+                        columSolved[column] = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"The values dont fit with no carry");
+                    }
+                }
+                else if (columnCarrys[column] == RequiresCarry.NotSure)
+                {
+                    if (addendSum == tempCharIntDict[result[column]][0] || addendSum + 1 == tempCharIntDict[result[column]][0])
+                    {
+                        Console.WriteLine($"The values fit but we are unsure about the carry from the next column");
+                        columSolved[column] = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"The values dont fit with or without a carry");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"Column {column} of the result does not have a value assigned");
+                if (tempCharIntDict[result[column]].Contains(addendSum))
+                {
+                    Console.WriteLine($"Setting value to {addendSum} assuming no carry");
+
+                    SetValForChar(tempCharIntDict, addendSum, result[column]);
+                    columSolved[column] = true;
+                }
+                else if (tempCharIntDict[result[column]].Contains(addendSum + 1))
+                {
+                    Console.WriteLine($"Setting value to {addendSum +1} assuming carry");
+
+                    SetValForChar(tempCharIntDict, addendSum + 1, result[column]);
+                    columSolved[column] = true;
+                }
+            }
+        }
+
+        static void SetValForChar(Dictionary<char, List<int>> dict, int i, char ch)
+        {
+            RemoveEveryValueFromListExcept(dict[ch], i);
+            RemoveValueFromEveryListInDictionaryExcept(i, dict, ch);
         }
 
         static void ConstrainColumn(int column)
@@ -204,6 +307,7 @@ namespace KataAlphameticsSolver
                 if (columnSums[i] != -1)
                 {
                     RemoveEveryValueFromListExcept(charIntDict[result[i]], columnSums[i]);
+                    RemoveValueFromEveryListInDictionaryExcept(columnSums[i], charIntDict, result[i]);
                 }
 
                 if (charIntDict[result[i]].Count == 1)
@@ -247,6 +351,7 @@ namespace KataAlphameticsSolver
                         if (addends[i][addends[i].Length - 1] == result[result.Length - 1] && addends[i +1][addends[i].Length - 1] == result[result.Length - 1])
                         {
                             RemoveEveryValueFromListExcept(charIntDict[result[result.Length - 1]], 0);
+                            RemoveValueFromEveryListInDictionaryExcept(0, charIntDict, result[result.Length - 1]);
                             break;
                         }
                     }
@@ -260,6 +365,7 @@ namespace KataAlphameticsSolver
             {
                 RemoveEveryValueFromListExcept(charIntDict[result[0]], 1);
                 RemoveValueFromEveryListInDictionaryExcept(1, charIntDict, result[0]);
+                columnCarrys[0] = RequiresCarry.Yes;
                 Console.WriteLine($"\nchar {result[0]} must be {charIntDict[result[0]][0]}\n");
             }
         }
@@ -307,17 +413,29 @@ namespace KataAlphameticsSolver
 
         static void CreateColumnSumDictionary()
         {
-            columnSums = new Dictionary<int, int>()
+            columnSums = new Dictionary<int, int>();
+            for (int i = 0; i < result.Length; i++)
             {
-                {0,0 },
-                {1,0 },
-                {2,0 },
-                {3,0 },
-                {4,0 },
-                {5,0 },
-                {6,0 },
-                {7,0 },
-            };
+                columnSums.Add(i, 0);
+            }    
+        }
+
+        static void CreateColumnCarrysList()
+        {
+            columnCarrys = new List<RequiresCarry>();
+            for (int i = 0; i < result.Length; i++)
+            {
+                columnCarrys.Add(RequiresCarry.NotSure);
+            }
+        }
+
+        static void CreateColumnSolvedList()
+        {
+            columSolved = new List<bool>();
+            for (int i = 0; i < result.Length; i++)
+            {
+                columSolved.Add(false);
+            }
         }
 
         static void OptionallyWriteStringsToConsole()
