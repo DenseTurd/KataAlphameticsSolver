@@ -1,0 +1,13 @@
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\bin\Debug\netcoreapp3.1\KataAlphameticsSolver.exe
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\bin\Debug\netcoreapp3.1\KataAlphameticsSolver.deps.json
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\bin\Debug\netcoreapp3.1\KataAlphameticsSolver.runtimeconfig.json
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\bin\Debug\netcoreapp3.1\KataAlphameticsSolver.runtimeconfig.dev.json
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\bin\Debug\netcoreapp3.1\KataAlphameticsSolver.dll
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\bin\Debug\netcoreapp3.1\KataAlphameticsSolver.pdb
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\obj\Debug\netcoreapp3.1\KataAlphameticsSolver.csprojAssemblyReference.cache
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\obj\Debug\netcoreapp3.1\KataAlphameticsSolver.AssemblyInfoInputs.cache
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\obj\Debug\netcoreapp3.1\KataAlphameticsSolver.AssemblyInfo.cs
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\obj\Debug\netcoreapp3.1\KataAlphameticsSolver.csproj.CoreCompileInputs.cache
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\obj\Debug\netcoreapp3.1\KataAlphameticsSolver.dll
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\obj\Debug\netcoreapp3.1\KataAlphameticsSolver.pdb
+C:\Users\robbie\source\repos\KataAlphameticsSolver\KataAlphameticsSolver\obj\Debug\netcoreapp3.1\KataAlphameticsSolver.genruntimeconfig.cache
