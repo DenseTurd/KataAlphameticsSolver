@@ -9,18 +9,20 @@ namespace KataAlphameticsSolver
      * If none of the chars in the addend column are the same as the result column and there must be a carry
      * none of the addends in that column can be zero. ?? Really tho?
      * 
+     * If not expecting to carry and addend sum > 9 You know somethings wrong
     */
 
     class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine(Alphametics("AD + BA = CE"));
-            //Console.WriteLine(Alphametics("MA + MA = ABB")); //"MA + MA = ABB" >> 61 + 61 = 122
+            //Console.WriteLine(Alphametics("AD + BA = CE"));
+            Console.WriteLine(Alphametics("MA + MA = ABB")); //"MA + MA = ABB" >> 61 + 61 = 122
         }
 
-        static Dictionary<char, List<int>> charIntDict;
-        static Dictionary<char, List<int>> tempCharIntDict;
+        static Dictionary<char, List<int>> mainDict;
+        static Dictionary<char, List<int>> testingDict;
+        static Dictionary<char, List<int>> revertDict;
         static string[] addends;
         static string result;
         static List<int> remainingValues = new List<int>() { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
@@ -34,6 +36,7 @@ namespace KataAlphameticsSolver
         }
         static List<RequiresCarry> columnCarrys;
         static List<bool> columSolved;
+        static char lastCharWeGuessedAValueFor;
 
         public static string Alphametics(string s)
         { 
@@ -41,7 +44,7 @@ namespace KataAlphameticsSolver
             CreateColumnCarrysList();
             CreateColumnSumDictionary();
             CreateColumnSolvedList();
-            ResetCharIntDictionary();
+            ResetCharIntDictionarys();
 
             OptionallyWriteStringsToConsole();
 
@@ -55,7 +58,7 @@ namespace KataAlphameticsSolver
 
             SystematicValueTestingAndAssigning();
 
-            var outStr = charIntDict.Aggregate(s, (current, value) => current.Replace(value.Key, value.Value[0].ToString().ToCharArray()[0]));
+            var outStr = testingDict.Aggregate(s, (current, value) => current.Replace(value.Key, value.Value[0].ToString().ToCharArray()[0]));
             return "\nMy best guess: " + outStr;
         }
 
@@ -63,17 +66,17 @@ namespace KataAlphameticsSolver
         {
             for (int i = 0; i < addends.Length; i++)
             {
-                charIntDict[addends[i][0]].Remove(0);
+                mainDict[addends[i][0]].Remove(0);
             }
 
-            charIntDict[result[0]].Remove(0);
+            mainDict[result[0]].Remove(0);
             Console.WriteLine("\nNo leading zeroes\n");
         }
 
         static void SystematicValueTestingAndAssigning()
         {
             Console.WriteLine("\nStarting algorithm\n");
-            tempCharIntDict = charIntDict;
+            CopyMainDictionaryToTestingDictionary();
             for (int i = 0; i < result.Length; i++) // For each column
             {
                 if (!AllValuesKnown(i))
@@ -93,84 +96,110 @@ namespace KataAlphameticsSolver
 
         static void TryValuesForColumn(int column)
         {
+            CopyTestingDictionaryToRevertDictionary();
             int addendSum = 0;
             for (int i = 0; i < addends.Length; i++)
             {
                 int addendColumnIndex = (addends[i].Length - result.Length) + column;
                 if (addendColumnIndex >= 0)
                 {
-                    if (tempCharIntDict[addends[i][addendColumnIndex]].Count != 1)
+                    char currentChar = addends[i][addendColumnIndex];
+                    if (testingDict[currentChar].Count != 1)
                     {
-                        GetAndSetMinPossibleVal(tempCharIntDict, addends[i][addendColumnIndex]);
-                        Console.WriteLine($"Setting char {addends[i][addendColumnIndex]} to {tempCharIntDict[addends[i][addendColumnIndex]][0]} for now");
+                        Console.WriteLine($"{currentChar}");
+                        GetAndSetMinPossibleVal(testingDict, currentChar);
+                        lastCharWeGuessedAValueFor = currentChar;
+                        Console.WriteLine($"Setting char {currentChar} to {testingDict[currentChar][0]} for now");
                     }
-                    addendSum += tempCharIntDict[addends[i][addendColumnIndex]][0];
-                    //Console.WriteLine($"addend sum currently: {addendSum}");
+                    addendSum += testingDict[currentChar][0];
+                    Console.WriteLine($"addend sum currently: {addendSum}");
                 }
             }
-
             Console.WriteLine($"The addend sum for column {column} is: {addendSum}. Testing against result");
             TestAgainstResultColumn(addendSum, column);
         }
 
         static void TestAgainstResultColumn(int addendSum, int column)
         {
-            if (tempCharIntDict[result[column]].Count == 1)
+            if (testingDict[result[column]].Count == 1) // Can't yet handle addend sum values larger than 9 (carrys)
             {
-                Console.WriteLine($"Column {column} of the result already has a value: {tempCharIntDict[result[column]][0]}");
+                Console.WriteLine($"Column {column} of the result already has a value: {testingDict[result[column]][0]}");
                 if (columnCarrys[column] == RequiresCarry.Yes)
                 {
-                    if (addendSum + 1 == tempCharIntDict[result[column]][0])
+                    if (addendSum + 1 == testingDict[result[column]][0])
                     {
                         Console.WriteLine($"The values fit with a carry from the next column");
                         columSolved[column] = true;
                     }
                     else
                     {
-                        Console.WriteLine($"The values dont fit with a carry");
+                        Console.WriteLine($"The values dont fit with a carry from next colum");
                     }
                 }
                 else if (columnCarrys[column] == RequiresCarry.No)
                 {
-                    if (addendSum == tempCharIntDict[result[column]][0])
+                    if (addendSum == testingDict[result[column]][0])
                     {
                         Console.WriteLine($"The values fit with no carry from the next column");
                         columSolved[column] = true;
                     }
                     else
                     {
-                        Console.WriteLine($"The values dont fit with no carry");
+                        Console.WriteLine($"The values dont fit with no carry from next column");
                     }
                 }
                 else if (columnCarrys[column] == RequiresCarry.NotSure)
                 {
-                    if (addendSum == tempCharIntDict[result[column]][0] || addendSum + 1 == tempCharIntDict[result[column]][0])
+                    if (addendSum == testingDict[result[column]][0] || addendSum + 1 == testingDict[result[column]][0])
                     {
                         Console.WriteLine($"The values fit but we are unsure about the carry from the next column");
                         columSolved[column] = true;
                     }
                     else
                     {
-                        Console.WriteLine($"The values dont fit with or without a carry");
+                        Console.WriteLine($"The values dont fit with or without a carry from next column");
                     }
                 }
             }
-            else
+            else  // This also can't handle addend sum of larger than 9 (carrys)
             {
                 Console.WriteLine($"Column {column} of the result does not have a value assigned");
-                if (tempCharIntDict[result[column]].Contains(addendSum))
+                if (testingDict[result[column]].Contains(addendSum))
                 {
                     Console.WriteLine($"Setting value to {addendSum} assuming no carry");
 
-                    SetValForChar(tempCharIntDict, addendSum, result[column]);
+                    SetValForChar(testingDict, addendSum, result[column]);
                     columSolved[column] = true;
                 }
-                else if (tempCharIntDict[result[column]].Contains(addendSum + 1))
+                else if (testingDict[result[column]].Contains(addendSum + 1))
                 {
                     Console.WriteLine($"Setting value to {addendSum +1} assuming carry");
 
-                    SetValForChar(tempCharIntDict, addendSum + 1, result[column]);
+                    SetValForChar(testingDict, addendSum + 1, result[column]);
                     columSolved[column] = true;
+                }
+                else
+                {
+                    Console.WriteLine($"{addendSum} is already taken");
+
+                    RemoveValuesThatWontWorkForChar(testingDict[lastCharWeGuessedAValueFor][0], lastCharWeGuessedAValueFor);
+
+                    Console.WriteLine($"Trying again");
+                    TryValuesForColumn(column);
+                }
+            }
+        }
+
+        static void RemoveValuesThatWontWorkForChar(int val, char ch)
+        {
+            CopyRevertDictionaryToTestingDictionary();
+
+            for (int i = val; i >= 0; i--)
+            {
+                if (testingDict[lastCharWeGuessedAValueFor].Contains(i))
+                {
+                    testingDict[lastCharWeGuessedAValueFor].Remove(i);
+                    Console.WriteLine($"Removing {i} from possible values for {lastCharWeGuessedAValueFor}");
                 }
             }
         }
@@ -183,7 +212,7 @@ namespace KataAlphameticsSolver
 
         static void ConstrainColumn(int column)
         {
-            var constraintTempDict = tempCharIntDict;
+            var constraintTempDict = testingDict;
             if (column == 0)
             {
                 Console.WriteLine("Working out sonstraints for column 0");
@@ -195,13 +224,14 @@ namespace KataAlphameticsSolver
                     int addendColumnIndex = (addends[i].Length - result.Length) + column;
                     if (addendColumnIndex == 0)
                     {
-                        GetAndSetMinPossibleVal(constraintTempDict, addends[i][0]);
-                        Console.WriteLine($"{addends[i][0]} set to {constraintTempDict[addends[i][0]][0]}");
-                        columnAddendsSum += constraintTempDict[addends[i][0]][0];
+                        char currentChar = addends[i][0];
+                        GetAndSetMinPossibleVal(constraintTempDict, currentChar);
+                        Console.WriteLine($"{addends[i][0]} set to {constraintTempDict[currentChar][0]}");
+                        columnAddendsSum += constraintTempDict[currentChar][0];
                     }
                 }
-                SetMinPossibleValFor(charIntDict, columnAddendsSum, result[0]);
-                tempCharIntDict = charIntDict;
+                SetMinPossibleValFor(mainDict, columnAddendsSum, result[0]);
+                CopyMainDictionaryToTestingDictionary();
             }
         }
 
@@ -258,16 +288,16 @@ namespace KataAlphameticsSolver
         static bool ValueCertain(char ch)
         {
             Console.WriteLine($"Checking certainty for char: {ch}");
-            if (charIntDict[ch].Count == 1)
-                Console.WriteLine($"{ch} is {charIntDict[ch][0]}");
+            if (mainDict[ch].Count == 1)
+                Console.WriteLine($"{ch} is {mainDict[ch][0]}");
 
-            return charIntDict[ch].Count != 1 ? false : true;
+            return mainDict[ch].Count != 1 ? false : true;
         }
 
         static void ShowMeWhatYouGot()
         {
             Console.WriteLine("\nSo far:");
-            foreach (var l in charIntDict)
+            foreach (var l in testingDict)
             {
                 List<string> possibleValues = new List<string>();
                 
@@ -288,10 +318,10 @@ namespace KataAlphameticsSolver
                 {
                     if(columnSums[j] != -1)
                     {
-                        if (charIntDict[addends[i][j]].Count == 1)
+                        if (mainDict[addends[i][j]].Count == 1)
                         {
-                            columnSums[j] += (int)charIntDict[addends[i][j]][0];
-                            Console.WriteLine($"Column {j} += {charIntDict[addends[i][j]][0]}");
+                            columnSums[j] += (int)mainDict[addends[i][j]][0];
+                            Console.WriteLine($"Column {j} += {mainDict[addends[i][j]][0]}");
                         }
                         else
                         {
@@ -306,16 +336,16 @@ namespace KataAlphameticsSolver
             {
                 if (columnSums[i] != -1)
                 {
-                    RemoveEveryValueFromListExcept(charIntDict[result[i]], columnSums[i]);
-                    RemoveValueFromEveryListInDictionaryExcept(columnSums[i], charIntDict, result[i]);
+                    RemoveEveryValueFromListExcept(mainDict[result[i]], columnSums[i]);
+                    RemoveValueFromEveryListInDictionaryExcept(columnSums[i], mainDict, result[i]);
                 }
 
-                if (charIntDict[result[i]].Count == 1)
+                if (mainDict[result[i]].Count == 1)
                 {
                     if(columnSums[i] != -1)
                         Console.WriteLine($"Column {i} = {columnSums[i]}");
                     
-                    Console.WriteLine($"Char {result[i]} = {charIntDict[result[i]][0]}\n");
+                    Console.WriteLine($"Char {result[i]} = {mainDict[result[i]][0]}\n");
                 }
             }
         }
@@ -350,8 +380,8 @@ namespace KataAlphameticsSolver
                         }
                         if (addends[i][addends[i].Length - 1] == result[result.Length - 1] && addends[i +1][addends[i].Length - 1] == result[result.Length - 1])
                         {
-                            RemoveEveryValueFromListExcept(charIntDict[result[result.Length - 1]], 0);
-                            RemoveValueFromEveryListInDictionaryExcept(0, charIntDict, result[result.Length - 1]);
+                            RemoveEveryValueFromListExcept(mainDict[result[result.Length - 1]], 0);
+                            RemoveValueFromEveryListInDictionaryExcept(0, mainDict, result[result.Length - 1]);
                             break;
                         }
                     }
@@ -363,34 +393,76 @@ namespace KataAlphameticsSolver
         {
             if (result.Length > maxAddendLength)
             {
-                RemoveEveryValueFromListExcept(charIntDict[result[0]], 1);
-                RemoveValueFromEveryListInDictionaryExcept(1, charIntDict, result[0]);
+                RemoveEveryValueFromListExcept(mainDict[result[0]], 1);
+                RemoveValueFromEveryListInDictionaryExcept(1, mainDict, result[0]);
                 columnCarrys[0] = RequiresCarry.Yes;
-                Console.WriteLine($"\nchar {result[0]} must be {charIntDict[result[0]][0]}\n");
+                Console.WriteLine($"\nchar {result[0]} must be {mainDict[result[0]][0]}\n");
             }
         }
 
-        static void ResetCharIntDictionary()
+        static void CopyMainDictionaryToTestingDictionary()
         {
-            charIntDict = new Dictionary<char, List<int>>();
+            testingDict = new Dictionary<char, List<int>>();
+            foreach (var keyValPair in mainDict)
+            {
+                List<int> replacementList = new List<int>();
+                for (int i = 0; i < keyValPair.Value.Count; i++)
+                {
+                    replacementList.Add(keyValPair.Value[i]);
+                }
+                testingDict.Add(keyValPair.Key, replacementList);
+            }
+        }
+
+        static void CopyTestingDictionaryToRevertDictionary()
+        {
+            revertDict = new Dictionary<char, List<int>>();
+            foreach (var keyValPair in testingDict)
+            {
+                List<int> replacementList = new List<int>();
+                for (int i = 0; i < keyValPair.Value.Count; i++)
+                {
+                    replacementList.Add(keyValPair.Value[i]);
+                }
+                revertDict.Add(keyValPair.Key, replacementList);
+            }
+        }
+
+        static void CopyRevertDictionaryToTestingDictionary()
+        {
+            testingDict = new Dictionary<char, List<int>>();
+            foreach (var keyValPair in revertDict)
+            {
+                List<int> replacementList = new List<int>();
+                for (int i = 0; i < keyValPair.Value.Count; i++)
+                {
+                    replacementList.Add(keyValPair.Value[i]);
+                }
+                testingDict.Add(keyValPair.Key, replacementList);
+            }
+        }
+
+        static void ResetCharIntDictionarys()
+        {
+            mainDict = new Dictionary<char, List<int>>();
             for (int i = 0; i < addends.Length; i++)
             {
                 for (int j = 0; j < addends[i].Length; j++)
                 {
-                    if (!charIntDict.ContainsKey(addends[i][j]))
+                    if (!mainDict.ContainsKey(addends[i][j]))
                     {
-                        charIntDict.Add(addends[i][j], new List<int>() { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
-                        Console.WriteLine($"Added {addends[i][j]} to char int dictionary");
+                        mainDict.Add(addends[i][j], new List<int>() { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+                        Console.WriteLine($"Added {addends[i][j]} to dictionary");
                     }
                 }
             }
 
             for (int i = 0; i < result.Length; i++)
             {
-                if (!charIntDict.ContainsKey(result[i]))
+                if (!mainDict.ContainsKey(result[i]))
                 {
-                    charIntDict.Add(result[i], new List<int>() { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
-                    Console.WriteLine($"Added {result[i]} to char int dictionary");
+                    mainDict.Add(result[i], new List<int>() { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+                    Console.WriteLine($"Added {result[i]} to dictionary");
                 }
             }
         }
