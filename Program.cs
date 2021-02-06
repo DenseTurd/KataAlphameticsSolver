@@ -10,7 +10,6 @@ namespace KataAlphameticsSolver
      * none of the addends in that column can be zero. ?? Really tho?
      * 
      * If not expecting to carry and addend sum > 9 You know somethings wrong
-     * We need a revert to last char we're not certain of ting
     */
 
     class Program
@@ -29,13 +28,10 @@ namespace KataAlphameticsSolver
         static int testColumn;
         static string[] addends;
         static string result;
-        static List<int> remainingValues = new List<int>() { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
         static Dictionary<int, int> columnSums;
         static int maxAddendLength;
-        
         static List<bool> columnCarrys;
         static List<bool> testCarrys;
-        static List<bool> columSolved;
         static char lastCharWeGuessedAValueFor;
 
         public static string Alphametics(string s)
@@ -43,7 +39,6 @@ namespace KataAlphameticsSolver
             FormatStrings(s);
             CreateColumnCarrysList();
             CreateColumnSumDictionary();
-            CreateColumnSolvedList();
             ResetCharIntDictionarys();
 
             OptionallyWriteStringsToConsole();
@@ -86,11 +81,9 @@ namespace KataAlphameticsSolver
                 {
                     Console.WriteLine($"There are unknown values in column {testColumn}\n");
                     ConstrainColumn(testColumn);
-                    if (!columSolved[testColumn])
-                    {
-                        CopyTestingDictionaryToColumnRevertDictionary(testColumn);
-                        TryValuesForColumn(testColumn);
-                    }
+
+                    CopyTestingDictionaryToColumnRevertDictionary(testColumn);
+                    TryValuesForColumn(testColumn);
                 }
                 testColumn++;
                 ShowMeWhatYouGot();
@@ -121,7 +114,7 @@ namespace KataAlphameticsSolver
                     Console.WriteLine($"addend sum currently: {addendSum}");
                 }
             }
-            Console.WriteLine($"The addend sum for column {column} is: {addendSum}. Testing against result");
+            //Console.WriteLine($"The addend sum for column {column} is: {addendSum}. Testing against result");
             CheckPreviousColumnCarryRequirement(addendSum, column);
         }
 
@@ -167,7 +160,6 @@ namespace KataAlphameticsSolver
                     if (addendSum > 9)
                     {
                         Console.WriteLine($"Addend sum for column {column} is larger than 9 but column {column - 1} does not require a carry. Need to retry previous column");
-                        columSolved[column - 1] = false;
                         // revert to last column make something different and start testing again
                     }
                     else
@@ -192,7 +184,6 @@ namespace KataAlphameticsSolver
                     if (addendSum + 1 == testingDict[result[column]][0]) // will need to adjust for actual carry value
                     {
                         Console.WriteLine($"The values fit with a carry from the next column");
-                        columSolved[column] = true;
                     }
                     else
                     {
@@ -205,7 +196,6 @@ namespace KataAlphameticsSolver
                     if (addendSum == testingDict[result[column]][0])
                     {
                         Console.WriteLine($"The values fit with no carry from the next column");
-                        columSolved[column] = true;
                     }
                     else
                     {
@@ -216,7 +206,7 @@ namespace KataAlphameticsSolver
             }
             else // if we dont have a result for this column
             {
-                Console.WriteLine($"Column {column} of the result does not have a value assigned");
+                Console.WriteLine($"Column {column} of the result ({result[column]}) does not have a value assigned");
                 if (testCarrys[column] == true)
                 {
                     addendSum = addendSum + 1; // will need to set for differnt carry values
@@ -229,10 +219,9 @@ namespace KataAlphameticsSolver
                     
                     if (testingDict[result[column]].Contains(addendSum)) 
                     {
-                        Console.WriteLine($"Setting value to {addendSum} Requiring carry from column {column +1}");
+                        Console.WriteLine($"Setting {result[column]} to {addendSum} Requiring carry from column {column +1}");
 
                         SetValForChar(testingDict, addendSum, result[column]);
-                        columSolved[column] = true;
                     }
                     else
                     {
@@ -246,7 +235,6 @@ namespace KataAlphameticsSolver
                     {
                         Console.WriteLine($"Setting value to {addendSum} without carry");
                         SetValForChar(testingDict, addendSum, result[column]);
-                        columSolved[column] = true;
                     }
                     else
                     {
@@ -259,34 +247,94 @@ namespace KataAlphameticsSolver
 
         private static void OhWellTryAgain(int column)
         {
-            Console.WriteLine($"Trying again");
+            Console.WriteLine($"Trying again\n");
 
             RemoveValuesThatWontWorkForChar(testingDict[lastCharWeGuessedAValueFor][0], lastCharWeGuessedAValueFor, column);
 
             // if there are no values left to try
             if (testingDict[lastCharWeGuessedAValueFor].Count == 0) // will need adjusting for more than 2 addends
             {
-                if (testCarrys[column] == false && column != result.Length - 1)
-                {
-                    Console.WriteLine($"Ran out of options for char {lastCharWeGuessedAValueFor} trying colum again with a carry required");
-                    CopyColumnRevertDictionaryToTestingDictionary(column);
-                    testCarrys[column] = true;
-                    TryValuesForColumn(column);
-                    return;
-                }
-                Console.WriteLine($"Ran out of options for char {lastCharWeGuessedAValueFor} redoing last column with a carry this time");
-                // reset testing dict to whatever it was when we started working on the previous column
+                Console.WriteLine($"Ran out of options for char {lastCharWeGuessedAValueFor}");
                 CopyColumnRevertDictionaryToTestingDictionary(column - 1);
-                // tell the previous column to require a carry
-                Console.WriteLine($"Setting column {column - 1} to require carry");
-                testCarrys[column - 1] = true;
-                // start testing from previous column
+
+                if (ColumnMustRequireCarry(column -1))
+                {
+                    Console.WriteLine($"Previous column {column -1} must require carry, incrementing unknown in previous column");
+                    RemoveLowestUnknownFromColumn(column - 1);
+                }
+                else
+                {
+                    Console.WriteLine($"Setting previous column ({column -1}) to not require carry");
+                    testCarrys[column - 1] = false;
+                }
+                // when we backtrack set the current column back to require carry = true
+                testCarrys[column] = column < result.Length-1; // Unless it's the last column
                 testColumn--;
                 TryValuesForColumn(testColumn);
                 return;
+                // last column should never be able to get set to require carry
+            }
+            TryValuesForColumn(column);
+        }
+
+        static bool ColumnMustRequireCarry(int column)
+        {
+            int addendSumWithoutUnknowns = 0;
+            char unknown = '*';
+            int unknowns = 0;
+            for (int i = 0; i < addends.Length; i++)
+            {
+                int globalIndex = (addends[i].Length - result.Length) + column;
+                if (globalIndex >= 0)
+                {
+                    char currentChar = addends[i][globalIndex];
+                    if (testingDict[currentChar].Count != 1)
+                    {
+                        if (unknown == '*')
+                        {
+                            unknown = currentChar;
+                            unknowns++;
+                        } 
+                        else
+                        {
+                            unknowns++;
+                        }
+                    }
+                    else
+                    {
+                        addendSumWithoutUnknowns += testingDict[currentChar][0];
+                    }
+                }
             }
 
-            TryValuesForColumn(column);
+            if (unknowns > 1)
+            {
+                return false;
+            }
+            if (unknown != result[column] && addendSumWithoutUnknowns == 0)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        static bool RemoveLowestUnknownFromColumn(int column)
+        {
+            for (int i = 0; i < addends.Length; i++)
+            {
+                int globalIndex = (addends[i].Length - result.Length) + column;
+                if (globalIndex >= 0)
+                {
+                    if (testingDict[addends[i][globalIndex]].Count != 1)
+                    {
+                        char currentChar = addends[i][globalIndex];
+                        SetMinPossibleValFor(testingDict, testingDict[currentChar].Min() + 1, currentChar);
+                        CopyTestingDictionaryToColumnRevertDictionary(column);
+                        return true;
+                    }
+                } 
+            }
+            return false;
         }
 
         static void RemoveValuesThatWontWorkForChar(int val, char ch, int column)
@@ -387,8 +435,8 @@ namespace KataAlphameticsSolver
         static bool ValueCertain(char ch)
         {
             Console.WriteLine($"Checking certainty for char: {ch}");
-            if (mainDict[ch].Count == 1)
-                Console.WriteLine($"{ch} is {mainDict[ch][0]}");
+            if (testingDict[ch].Count == 1)
+                Console.WriteLine($"{ch} is {testingDict[ch][0]}");
 
             return mainDict[ch].Count != 1 ? false : true;
         }
@@ -449,7 +497,7 @@ namespace KataAlphameticsSolver
             }
         }
 
-        private static void RemoveEveryValueFromListExcept(List<int> list, int i)
+        static void RemoveEveryValueFromListExcept(List<int> list, int i)
         {
             for (int j = list.Min(); j <= list.Max(); j++)
             {
@@ -635,7 +683,7 @@ namespace KataAlphameticsSolver
             columnCarrys = new List<bool>();
             for (int i = 0; i < result.Length; i++)
             {
-                columnCarrys.Add(false);
+                columnCarrys.Add(i < result.Length -1);
             }
         }
 
@@ -645,15 +693,6 @@ namespace KataAlphameticsSolver
             for (int i = 0; i < result.Length; i++)
             {
                 testCarrys.Add(columnCarrys[i]);
-            }
-        }
-
-        static void CreateColumnSolvedList()
-        {
-            columSolved = new List<bool>();
-            for (int i = 0; i < result.Length; i++)
-            {
-                columSolved.Add(false);
             }
         }
 
