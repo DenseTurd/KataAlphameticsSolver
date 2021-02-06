@@ -16,7 +16,8 @@ namespace KataAlphameticsSolver
     {
         static void Main(string[] args)
         {
-            Console.WriteLine(Alphametics("SEND + MORE = MONEY"));
+            Console.WriteLine(Alphametics("ZEROES + ONES = BINARY")); //"ZEROES + ONES = BINARY\" -> \"698392 + 3192 = 701584\"
+            //Console.WriteLine(Alphametics("SEND + MORE = MONEY"));
             //Console.WriteLine(Alphametics("AD + BA = CE"));
             //Console.WriteLine(Alphametics("MA + MA = ABB")); //"MA + MA = ABB" >> 61 + 61 = 122
         }
@@ -75,6 +76,9 @@ namespace KataAlphameticsSolver
             CreateRevertDictionarys();
             CopyColumnCarrysToTestCarrys();
             testColumn = 0;
+
+            //TestLoop(testColumn);
+
             while (testColumn < result.Length)
             {
                 if (!AllValuesKnown(testColumn))
@@ -92,8 +96,68 @@ namespace KataAlphameticsSolver
             ShowMeWhatYouGot();
         }
 
+        static void TestLoop(int testColumn)
+        {
+            while (testColumn < result.Length)
+            {
+                if (!AllValuesKnown(testColumn))
+                {
+                    Console.WriteLine($"There are unknown values in column {testColumn}\n");
+                    ConstrainColumn(testColumn);
+
+                    CopyTestingDictionaryToColumnRevertDictionary(testColumn);
+                    ShowMeWhatYouGot();
+                    TryValuesForColumn(testColumn);
+                }
+                testColumn++; 
+            }
+
+            if (!SumWorks())
+            {
+                CopyColumnRevertDictionaryToTestingDictionary(0);
+                RemoveLowestUnknownFromColumn(0);
+                TestLoop(0);
+            }
+        }
+
+        static bool SumWorks()
+        {
+            List<int> addendsAsInts = new List<int>();
+            int resultAsInt;
+            for (int i = 0; i < addends.Length; i++)
+            {
+               addendsAsInts.Add(MakeInt(addends[i]));
+            }
+            resultAsInt = MakeInt(result);
+
+            int AddendsSum = 0;
+            for (int i = 0; i < addendsAsInts.Count; i++)
+            {
+                AddendsSum += addendsAsInts[i];
+                Console.WriteLine($"  {addendsAsInts[i]} +");
+            }
+            Console.WriteLine($"= {resultAsInt}");
+
+            return AddendsSum == resultAsInt;
+        }
+
+        static int MakeInt(string str)
+        {
+            int inty = 0;
+            for (int i = 0; i < str.Length; i++)
+            {
+                int globalIndex = (str.Length - result.Length) + i;
+                if (globalIndex >= 0)
+                {
+                    inty += (int)(MathF.Pow(testingDict[str[i]][0], result.Length - globalIndex));
+                }
+            }
+            return inty;
+        }
+
         static void TryValuesForColumn(int column)
         {
+            ShowMeWhatYouGot();
             CreateCharRevertDictionary();
             int addendSum = 0;
             for (int i = 0; i < addends.Length; i++)
@@ -264,7 +328,8 @@ namespace KataAlphameticsSolver
                 }
                 else
                 {
-                    Console.WriteLine($"Setting previous column ({column -1}) to not require carry");
+                    Console.WriteLine($"Setting previous column ({column -1}) to not require carry, incrementing unknown in previous column");
+                    RemoveLowestUnknownFromColumn(column - 1);
                     testCarrys[column - 1] = false;
                 }
                 // when we backtrack set the current column back to require carry = true
@@ -318,8 +383,9 @@ namespace KataAlphameticsSolver
             return false;
         }
 
-        static bool RemoveLowestUnknownFromColumn(int column)
+        static void RemoveLowestUnknownFromColumn(int column)
         {
+            char currentChar;
             for (int i = 0; i < addends.Length; i++)
             {
                 int globalIndex = (addends[i].Length - result.Length) + column;
@@ -327,14 +393,20 @@ namespace KataAlphameticsSolver
                 {
                     if (testingDict[addends[i][globalIndex]].Count != 1)
                     {
-                        char currentChar = addends[i][globalIndex];
+                        currentChar = addends[i][globalIndex];
                         SetMinPossibleValFor(testingDict, testingDict[currentChar].Min() + 1, currentChar);
                         CopyTestingDictionaryToColumnRevertDictionary(column);
-                        return true;
+                        return;
                     }
                 } 
             }
-            return false;
+
+            if (testingDict[result[column]].Count != 1)
+            {
+                currentChar = result[column];
+                SetMinPossibleValFor(testingDict, testingDict[currentChar].Min() + 1, currentChar);
+                CopyTestingDictionaryToColumnRevertDictionary(column);
+            }
         }
 
         static void RemoveValuesThatWontWorkForChar(int val, char ch, int column)
