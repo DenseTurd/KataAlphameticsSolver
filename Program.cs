@@ -91,33 +91,20 @@ namespace KataAlphameticsSolver
                 }
                 testColumn++;
                 ShowMeWhatYouGot();
+                if (testColumn == result.Length)
+                {
+                    Console.WriteLine("\n TRYING SUM");
+                    if (!SumWorks())
+                    {
+                        Console.WriteLine("Didn't work\n");
+                        CopyColumnRevertDictionaryToTestingDictionary(0);
+                        RemoveLowestUnknownFromColumnMainDict(0);
+                        testColumn = 0;
+                    }
+                }
             }
 
             ShowMeWhatYouGot();
-        }
-
-        static void TestLoop(int testColumn)
-        {
-            while (testColumn < result.Length)
-            {
-                if (!AllValuesKnown(testColumn))
-                {
-                    Console.WriteLine($"There are unknown values in column {testColumn}\n");
-                    ConstrainColumn(testColumn);
-
-                    CopyTestingDictionaryToColumnRevertDictionary(testColumn);
-                    ShowMeWhatYouGot();
-                    TryValuesForColumn(testColumn);
-                }
-                testColumn++; 
-            }
-
-            if (!SumWorks())
-            {
-                CopyColumnRevertDictionaryToTestingDictionary(0);
-                RemoveLowestUnknownFromColumn(0);
-                TestLoop(0);
-            }
         }
 
         static bool SumWorks()
@@ -145,12 +132,8 @@ namespace KataAlphameticsSolver
         {
             int inty = 0;
             for (int i = 0; i < str.Length; i++)
-            {
-                int globalIndex = (str.Length - result.Length) + i;
-                if (globalIndex >= 0)
-                {
-                    inty += (int)(MathF.Pow(testingDict[str[i]][0], result.Length - globalIndex));
-                }
+            {               
+                inty += (int)(testingDict[str[i]][0] * MathF.Pow(10, (str.Length -1) - i));
             }
             return inty;
         }
@@ -405,6 +388,34 @@ namespace KataAlphameticsSolver
             {
                 currentChar = result[column];
                 SetMinPossibleValFor(testingDict, testingDict[currentChar].Min() + 1, currentChar);
+                CopyTestingDictionaryToColumnRevertDictionary(column);
+            }
+        }
+
+        static void RemoveLowestUnknownFromColumnMainDict(int column)
+        {
+            char currentChar;
+            for (int i = 0; i < addends.Length; i++)
+            {
+                int globalIndex = (addends[i].Length - result.Length) + column;
+                if (globalIndex >= 0)
+                {
+                    if (mainDict[addends[i][globalIndex]].Count != 1)
+                    {
+                        currentChar = addends[i][globalIndex];
+                        SetMinPossibleValFor(mainDict, mainDict[currentChar].Min() + 1, currentChar);
+                        CopyMainDictionaryToTestingDictionary();
+                        CopyTestingDictionaryToColumnRevertDictionary(column);
+                        return;
+                    }
+                }
+            }
+
+            if (mainDict[result[column]].Count != 1)
+            {
+                currentChar = result[column];
+                SetMinPossibleValFor(mainDict, mainDict[currentChar].Min() + 1, currentChar);
+                CopyMainDictionaryToTestingDictionary();
                 CopyTestingDictionaryToColumnRevertDictionary(column);
             }
         }
